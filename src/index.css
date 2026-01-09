@@ -1,0 +1,774 @@
+:root {
+  --color-bg: #0f0f0f;
+  --color-surface: #1a1a1a;
+  --color-surface-hover: #252525;
+  --color-border: #333;
+  --color-text: #e0e0e0;
+  --color-text-muted: #888;
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  padding: 1rem;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.app-main {
+  flex: 1;
+  padding: 2rem 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app-footer {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Theme Input */
+.theme-input {
+  text-align: center;
+}
+
+.theme-input h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+}
+
+.theme-input .subtitle {
+  color: var(--color-text-muted);
+  margin-bottom: 2rem;
+}
+
+.daily-button {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.daily-button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.daily-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 2rem 0;
+  color: var(--color-text-muted);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.divider span {
+  padding: 0 1rem;
+}
+
+.input-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.suggestion-chip {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion-chip:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+}
+
+.difficulty-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.difficulty-btn {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.difficulty-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.difficulty-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 3rem;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-hint {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+/* Error Banner */
+.error-banner {
+  background: var(--color-error);
+  color: white;
+  padding: 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-banner button {
+  padding: 0.5rem 1rem;
+  background: white;
+  color: var(--color-error);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Puzzle Grid */
+.puzzle-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.progress-bar {
+  margin-bottom: 1rem;
+}
+
+.progress-text {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.progress-track {
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Puzzle Card */
+.puzzle-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: all 0.2s;
+}
+
+.puzzle-card.active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.puzzle-card.complete {
+  opacity: 0.8;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.decade-badge {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.result-badge {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.result-badge.correct {
+  color: var(--color-success);
+}
+
+.result-badge.skipped {
+  color: var(--color-text-muted);
+}
+
+.lyrics-section {
+  margin-bottom: 1rem;
+}
+
+.lyric-snippet {
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-bg);
+  border-left: 3px solid var(--color-border);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-style: italic;
+  position: relative;
+}
+
+.lyric-snippet.hard {
+  border-left-color: var(--color-error);
+}
+
+.lyric-snippet.medium {
+  border-left-color: var(--color-warning);
+}
+
+.lyric-snippet.easy {
+  border-left-color: var(--color-success);
+}
+
+.hint-level {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  font-size: 0.625rem;
+  font-style: normal;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.answer-reveal {
+  padding: 1rem;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+}
+
+.answer-reveal .answer {
+  margin-bottom: 0.5rem;
+}
+
+.answer-reveal .connection {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.guess-form .input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.guess-form input {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+.guess-form input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.guess-form input.correct {
+  border-color: var(--color-success);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.feedback {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-warning);
+}
+
+.feedback .attempts {
+  float: right;
+  color: var(--color-text-muted);
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.button-row button {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.button-row button[type="submit"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.button-row button[type="submit"]:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.button-row button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button-row .hint-btn {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.button-row .hint-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.button-row .skip-btn {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.button-row .skip-btn:hover {
+  background: var(--color-surface);
+}
+
+.waiting {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1rem;
+}
+
+/* Theme Guess */
+.theme-guess {
+  text-align: center;
+}
+
+.theme-guess h2 {
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+.theme-guess .hint {
+  padding: 1rem;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+}
+
+.songs-summary {
+  text-align: left;
+  margin-bottom: 2rem;
+}
+
+.songs-summary p {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.songs-summary ul {
+  list-style: none;
+}
+
+.songs-summary li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.songs-summary .decade {
+  display: inline-block;
+  width: 60px;
+  color: var(--color-text-muted);
+}
+
+.theme-guess form {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.theme-guess button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.theme-guess button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.theme-guess button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Results */
+.results {
+  text-align: center;
+}
+
+.results h2 {
+  margin-bottom: 1.5rem;
+  color: var(--color-primary);
+}
+
+.score-display {
+  margin-bottom: 2rem;
+}
+
+.score-circle {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border: 4px solid var(--color-primary);
+  border-radius: 50%;
+  margin-bottom: 0.5rem;
+}
+
+.score-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.score-max {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.score-percentage {
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  margin-bottom: 2rem;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.theme-reveal {
+  margin-bottom: 2rem;
+}
+
+.theme-reveal h3 {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.theme-answer {
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 1rem;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+}
+
+.theme-answer.correct {
+  color: var(--color-success);
+}
+
+.theme-answer.incorrect {
+  color: var(--color-error);
+}
+
+.your-guess {
+  margin-top: 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.songs-breakdown {
+  text-align: left;
+  margin-bottom: 2rem;
+}
+
+.songs-breakdown h3 {
+  margin-bottom: 1rem;
+}
+
+.song-result {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.75rem;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+}
+
+.song-result .decade {
+  width: 60px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.song-result .song-info {
+  flex: 1;
+}
+
+.song-result .connection {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.25rem;
+}
+
+.song-result .result-icon {
+  font-size: 1.25rem;
+  margin-left: 1rem;
+}
+
+.song-result.correct .result-icon {
+  color: var(--color-success);
+}
+
+.song-result.incorrect .result-icon {
+  color: var(--color-error);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.actions button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.share-btn {
+  background: var(--color-primary);
+  border: none;
+  color: white;
+}
+
+.share-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.copy-link-btn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.copy-link-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.play-again-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.play-again-btn:hover {
+  background: var(--color-surface);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .app-main {
+    padding: 1rem;
+  }
+
+  .theme-input h1 {
+    font-size: 2rem;
+  }
+
+  .guess-form .input-row {
+    flex-direction: column;
+  }
+
+  .button-row {
+    flex-wrap: wrap;
+  }
+
+  .stats {
+    gap: 1.5rem;
+  }
+}
