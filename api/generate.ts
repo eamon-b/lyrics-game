@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { generatePuzzlePrompt } from '../src/lib/prompts';
-import { PuzzleResponseSchema, GenerateRequestSchema } from '../src/lib/schemas';
-import type { Puzzle, SongPuzzle } from '../src/types/puzzle';
+import { generatePuzzlePrompt } from './lib/prompts.js';
+import { PuzzleResponseSchema, GenerateRequestSchema } from './lib/schemas.js';
+import type { Puzzle, SongPuzzle } from './lib/types.js';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

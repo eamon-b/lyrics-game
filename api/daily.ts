@@ -1,13 +1,35 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
+import type { VercelKV } from '@vercel/kv';
 import Anthropic from '@anthropic-ai/sdk';
-import { generatePuzzlePrompt, DAILY_THEMES } from '../src/lib/prompts';
-import { PuzzleResponseSchema } from '../src/lib/schemas';
-import type { Puzzle, SongPuzzle } from '../src/types/puzzle';
+import { generatePuzzlePrompt, DAILY_THEMES } from './lib/prompts.js';
+import { PuzzleResponseSchema } from './lib/schemas.js';
+import type { Puzzle, SongPuzzle } from './lib/types.js';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Lazy initialization to ensure env vars are loaded at request time
+let _kv: VercelKV | null = null;
+async function getKV(): Promise<VercelKV | null> {
+  if (!_kv) {
+    const url = process.env.KV_REST_API_URL;
+    const token = process.env.KV_REST_API_TOKEN;
+    if (!url || !token) {
+      return null;
+    }
+    // Dynamic import to avoid issues at module load time
+    const { createClient } = await import('@vercel/kv');
+    _kv = createClient({ url, token });
+  }
+  return _kv;
+}
+
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!_anthropic) {
+    _anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+  }
+  return _anthropic;
+}
 
 // Get a deterministic puzzle number based on date
 function getPuzzleNumber(): number {
@@ -56,7 +78,7 @@ function transformToPuzzle(
 async function generateDailyPuzzle(puzzleNumber: number): Promise<Puzzle> {
   const theme = getTodaysTheme(puzzleNumber);
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     messages: [
@@ -92,56 +114,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const puzzleNumber = getPuzzleNumber();
   const cacheKey = `daily-puzzle-${puzzleNumber}`;
 
+  // Helper to calculate time until next puzzle
+  const getNextPuzzleTime = () => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setUTCHours(0, 0, 0, 0);
+    return tomorrow.getTime() - now.getTime();
+  };
+
   try {
-    // Try to get cached puzzle
-    let puzzle = await kv.get<Puzzle>(cacheKey);
+    const kv = await getKV();
+    let puzzle: Puzzle | null = null;
+
+    // Try to get cached puzzle if KV is available
+    if (kv) {
+      puzzle = await kv.get<Puzzle>(cacheKey);
+    }
 
     if (!puzzle) {
       // Generate new puzzle
       console.log(`Generating daily puzzle #${puzzleNumber}`);
       puzzle = await generateDailyPuzzle(puzzleNumber);
 
-      // Cache for 24 hours
-      await kv.set(cacheKey, puzzle, { ex: 86400 });
+      // Cache for 24 hours if KV is available
+      if (kv) {
+        await kv.set(cacheKey, puzzle, { ex: 86400 });
+      }
     }
-
-    // Calculate time until next puzzle (midnight UTC)
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
-    const msUntilNext = tomorrow.getTime() - now.getTime();
 
     return res.status(200).json({
       puzzle,
       puzzleNumber,
-      nextPuzzleIn: msUntilNext,
+      nextPuzzleIn: getNextPuzzleTime(),
+      cached: kv !== null,
     });
   } catch (error) {
     console.error('Error getting daily puzzle:', error);
-
-    // If KV is not configured, generate without caching
-    if (
-      error instanceof Error &&
-      error.message.includes('KV')
-    ) {
-      try {
-        const puzzle = await generateDailyPuzzle(puzzleNumber);
-        const now = new Date();
-        const tomorrow = new Date(now);
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-        tomorrow.setUTCHours(0, 0, 0, 0);
-
-        return res.status(200).json({
-          puzzle,
-          puzzleNumber,
-          nextPuzzleIn: tomorrow.getTime() - now.getTime(),
-          cached: false,
-        });
-      } catch (genError) {
-        console.error('Error generating puzzle:', genError);
-      }
-    }
 
     return res.status(500).json({
       error: 'Failed to get daily puzzle',

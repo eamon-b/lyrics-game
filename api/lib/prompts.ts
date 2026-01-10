@@ -1,4 +1,4 @@
-import type { Difficulty } from '@/types/puzzle';
+import type { Difficulty } from './types.js';
 
 export function generatePuzzlePrompt(theme: string, difficulty: Difficulty): string {
   const difficultyGuide = {
