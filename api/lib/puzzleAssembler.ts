@@ -63,7 +63,7 @@ export async function assemblePuzzle(
 
 async function getSongSelections(ctx: AssemblyContext): Promise<z.infer<typeof SongSelectionResponseSchema>> {
   const message = await ctx.anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250514',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 4096,
     system: 'You are a music expert. Respond with valid JSON only. No explanations, no markdown - just raw JSON starting with {',
     messages: [
@@ -214,7 +214,7 @@ async function getReplacementSong(
   failedSongs: string[]
 ): Promise<SongSelection> {
   const message = await ctx.anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250514',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     system: 'You are a music expert. Respond with valid JSON only.',
     messages: [
