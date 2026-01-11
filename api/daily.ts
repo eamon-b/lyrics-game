@@ -79,7 +79,7 @@ async function generateDailyPuzzle(puzzleNumber: number): Promise<Puzzle> {
   const theme = getTodaysTheme(puzzleNumber);
 
   const message = await getAnthropic().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4.5',
     max_tokens: 4096,
     messages: [
       {

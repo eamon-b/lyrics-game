@@ -8,6 +8,7 @@ interface ThemeGuessProps {
 
 export function ThemeGuess({ puzzle, onSubmit }: ThemeGuessProps) {
   const [guess, setGuess] = useState('');
+  const [showHint, setShowHint] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +20,15 @@ export function ThemeGuess({ puzzle, onSubmit }: ThemeGuessProps) {
   return (
     <div className="theme-guess">
       <h2>Final Challenge!</h2>
-      <p className="hint">
-        <strong>Hint:</strong> {puzzle.themeHint}
-      </p>
+      {showHint ? (
+        <p className="hint">
+          <strong>Hint:</strong> {puzzle.themeHint}
+        </p>
+      ) : (
+        <button type="button" className="hint-btn" onClick={() => setShowHint(true)}>
+          Show Hint
+        </button>
+      )}
 
       <div className="songs-summary">
         <p>The songs were:</p>

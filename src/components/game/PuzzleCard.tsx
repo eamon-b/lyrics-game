@@ -72,9 +72,6 @@ export function PuzzleCard({
           <div className="answer">
             <strong>{song.artist}</strong> - "{song.title}" ({song.year})
           </div>
-          <div className="connection">
-            <em>Theme connection:</em> {song.connectionHint}
-          </div>
         </div>
       ) : isActive ? (
         <form className="guess-form" onSubmit={handleSubmit}>

@@ -8,14 +8,9 @@ interface ThemeInputProps {
 }
 
 const SUGGESTED_THEMES = [
-  'rain',
-  'fire',
-  'dancing',
-  'dreams',
-  'the moon',
-  'heartbreak',
-  'summer',
-  'freedom',
+  'songs from Shrek movies',
+  'songs for your git commit messages',
+  'songs banned from radio at some point',
 ];
 
 export function ThemeInput({ onSubmit, onDailyClick, isLoading }: ThemeInputProps) {

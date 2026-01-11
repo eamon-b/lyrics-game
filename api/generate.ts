@@ -56,12 +56,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4.5',
       max_tokens: 4096,
+      system:
+        'You are a music trivia expert. You MUST respond with valid JSON only. No explanations, no markdown, no code blocks - just the raw JSON object. Never start with text like "I understand" or "Here is". Start directly with {',
       messages: [
         {
           role: 'user',
           content: generatePuzzlePrompt(theme, difficulty),
+        },
+        {
+          role: 'assistant',
+          content: '{',
         },
       ],
     });
@@ -72,10 +78,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('No text response from Claude');
     }
 
-    // Parse the JSON response
-    let jsonText = textContent.text;
+    // Parse the JSON response (prepend { since we used prefill)
+    let jsonText = '{' + textContent.text;
 
-    // Handle markdown code blocks if present
+    // Handle markdown code blocks if present (shouldn't happen with prefill but just in case)
     const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonText = jsonMatch[1].trim();
@@ -92,6 +98,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(puzzle);
   } catch (error) {
     console.error('Error generating puzzle:', error);
+
+    // Handle Anthropic API errors (content filtering, rate limits, etc.)
+    if (error instanceof Anthropic.APIError) {
+      if (error.message.includes('content filtering') || error.message.includes('Output blocked')) {
+        return res.status(400).json({
+          error: 'Content filtered',
+          message:
+            'This theme may involve songs with content that cannot be processed. Please try a different theme.',
+        });
+      }
+      return res.status(error.status || 500).json({
+        error: 'API error',
+        message: error.message,
+      });
+    }
 
     if (error instanceof z.ZodError) {
       return res.status(500).json({
