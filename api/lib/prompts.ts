@@ -121,6 +121,8 @@ ${failedList}
 Please suggest a well-known song from a major artist where the lyrics are definitely available.
 Prefer mainstream hits from major labels.
 
+CRITICAL: You MUST provide EXACTLY 3 snippetGuidance items - one for each difficulty level (hard, medium, easy). No more, no less.
+
 Respond with JSON in this exact format:
 {
   "decade": "${decade}",
