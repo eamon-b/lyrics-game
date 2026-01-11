@@ -3,7 +3,10 @@ import {
   LyricSnippetSchema,
   SongPuzzleSchema,
   PuzzleResponseSchema,
-  GenerateRequestSchema
+  GenerateRequestSchema,
+  SnippetGuidanceSchema,
+  SongSelectionSchema,
+  SongSelectionResponseSchema
 } from './schemas'
 
 describe('LyricSnippetSchema', () => {
@@ -34,6 +37,7 @@ describe('LyricSnippetSchema', () => {
 
 describe('SongPuzzleSchema', () => {
   const validSong = {
+    id: 'song-123',
     decade: '1980s',
     artist: 'Queen',
     title: 'Bohemian Rhapsody',
@@ -76,7 +80,9 @@ describe('SongPuzzleSchema', () => {
 })
 
 describe('PuzzleResponseSchema', () => {
+  let songIdCounter = 0
   const createValidSong = (decade: string, year: number) => ({
+    id: `song-${++songIdCounter}`,
     decade,
     artist: 'Test Artist',
     title: 'Test Song',
@@ -90,6 +96,7 @@ describe('PuzzleResponseSchema', () => {
   })
 
   const validPuzzle = {
+    id: 'puzzle-123',
     theme: 'Love',
     themeHint: 'Songs about romantic feelings',
     songs: [
@@ -101,6 +108,8 @@ describe('PuzzleResponseSchema', () => {
       createValidSong('2010s', 2015),
       createValidSong('2020s', 2022),
     ],
+    difficulty: 'medium',
+    createdAt: '2024-01-01T00:00:00.000Z',
   }
 
   it('accepts valid puzzle responses', () => {
@@ -135,5 +144,143 @@ describe('GenerateRequestSchema', () => {
   it('rejects invalid difficulty', () => {
     const invalid = { theme: 'love', difficulty: 'super-hard' }
     expect(() => GenerateRequestSchema.parse(invalid)).toThrow()
+  })
+})
+
+describe('SnippetGuidanceSchema', () => {
+  const validGuidance = {
+    difficulty: 'medium',
+    section: 'verse',
+    verseNumber: 1,
+    lineRange: { start: 1, end: 3 },
+    keywords: ['word1', 'word2', 'word3'],
+    description: 'Test description',
+  }
+
+  it('accepts valid snippet guidance', () => {
+    expect(() => SnippetGuidanceSchema.parse(validGuidance)).not.toThrow()
+  })
+
+  it('accepts guidance without verseNumber', () => {
+    const { verseNumber, ...withoutVerseNumber } = validGuidance
+    expect(() => SnippetGuidanceSchema.parse(withoutVerseNumber)).not.toThrow()
+  })
+
+  it('rejects invalid section type', () => {
+    const invalid = { ...validGuidance, section: 'instrumental' }
+    expect(() => SnippetGuidanceSchema.parse(invalid)).toThrow()
+  })
+
+  it('requires at least 3 keywords', () => {
+    const invalid = { ...validGuidance, keywords: ['word1', 'word2'] }
+    expect(() => SnippetGuidanceSchema.parse(invalid)).toThrow()
+  })
+
+  it('rejects more than 8 keywords', () => {
+    const invalid = {
+      ...validGuidance,
+      keywords: ['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9'],
+    }
+    expect(() => SnippetGuidanceSchema.parse(invalid)).toThrow()
+  })
+})
+
+describe('SongSelectionSchema', () => {
+  const validGuidance = {
+    difficulty: 'hard',
+    section: 'verse',
+    lineRange: { start: 1, end: 3 },
+    keywords: ['word1', 'word2', 'word3'],
+    description: 'Test description',
+  }
+
+  const validSelection = {
+    decade: '1980s',
+    artist: 'Queen',
+    title: 'Bohemian Rhapsody',
+    year: 1975,
+    snippetGuidance: [
+      { ...validGuidance, difficulty: 'hard' },
+      { ...validGuidance, difficulty: 'medium' },
+      { ...validGuidance, difficulty: 'easy' },
+    ],
+    connectionHint: 'A song about a condemned man',
+    alternates: [
+      { artist: 'A-ha', title: 'Take On Me', year: 1985 },
+    ],
+  }
+
+  it('accepts valid song selection', () => {
+    expect(() => SongSelectionSchema.parse(validSelection)).not.toThrow()
+  })
+
+  it('accepts selection without alternates', () => {
+    const { alternates, ...withoutAlternates } = validSelection
+    expect(() => SongSelectionSchema.parse(withoutAlternates)).not.toThrow()
+  })
+
+  it('requires exactly 3 snippet guidances', () => {
+    const invalid = {
+      ...validSelection,
+      snippetGuidance: validSelection.snippetGuidance.slice(0, 2),
+    }
+    expect(() => SongSelectionSchema.parse(invalid)).toThrow()
+  })
+})
+
+describe('SongSelectionResponseSchema', () => {
+  const createValidGuidance = (difficulty: string) => ({
+    difficulty,
+    section: 'verse',
+    lineRange: { start: 1, end: 3 },
+    keywords: ['word1', 'word2', 'word3'],
+    description: 'Test description',
+  })
+
+  const createValidSelection = (decade: string, year: number) => ({
+    decade,
+    artist: 'Test Artist',
+    title: 'Test Song',
+    year,
+    snippetGuidance: [
+      createValidGuidance('hard'),
+      createValidGuidance('medium'),
+      createValidGuidance('easy'),
+    ],
+    connectionHint: 'Test hint',
+  })
+
+  const validResponse = {
+    theme: 'Love',
+    themeHint: 'Songs about romantic feelings',
+    songs: [
+      createValidSelection('1960s', 1965),
+      createValidSelection('1970s', 1975),
+      createValidSelection('1980s', 1985),
+      createValidSelection('1990s', 1995),
+      createValidSelection('2000s', 2005),
+      createValidSelection('2010s', 2015),
+      createValidSelection('2020s', 2022),
+    ],
+  }
+
+  it('accepts valid song selection response', () => {
+    expect(() => SongSelectionResponseSchema.parse(validResponse)).not.toThrow()
+  })
+
+  it('requires exactly 7 songs', () => {
+    const invalid = {
+      ...validResponse,
+      songs: validResponse.songs.slice(0, 6),
+    }
+    expect(() => SongSelectionResponseSchema.parse(invalid)).toThrow()
+  })
+
+  it('rejects theme hint over 200 characters', () => {
+    const invalid = {
+      ...validResponse,
+      themeHint: 'x'.repeat(201),
+    }
+    expect(() => SongSelectionResponseSchema.parse(invalid)).toThrow()
   })
 })

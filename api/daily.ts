@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { VercelKV } from '@vercel/kv';
 import Anthropic from '@anthropic-ai/sdk';
-import { generatePuzzlePrompt, DAILY_THEMES } from './lib/prompts.js';
-import { PuzzleResponseSchema } from './lib/schemas.js';
-import type { Puzzle, SongPuzzle } from './lib/types.js';
+import { DAILY_THEMES } from './lib/prompts.js';
+import { GeniusClient } from './lib/genius.js';
+import { assembleDailyPuzzle } from './lib/puzzleAssembler.js';
+import type { Puzzle } from './lib/types.js';
 
 // Lazy initialization to ensure env vars are loaded at request time
 let _kv: VercelKV | null = null;
@@ -31,6 +32,18 @@ function getAnthropic(): Anthropic {
   return _anthropic;
 }
 
+let _genius: GeniusClient | null = null;
+function getGenius(): GeniusClient {
+  if (!_genius) {
+    const token = process.env.GENIUS_ACCESS_TOKEN;
+    if (!token) {
+      throw new Error('GENIUS_ACCESS_TOKEN not configured');
+    }
+    _genius = new GeniusClient(token);
+  }
+  return _genius;
+}
+
 // Get a deterministic puzzle number based on date
 function getPuzzleNumber(): number {
   const startDate = new Date('2024-01-01');
@@ -46,64 +59,9 @@ function getTodaysTheme(puzzleNumber: number): string {
   return DAILY_THEMES[puzzleNumber % DAILY_THEMES.length];
 }
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 15);
-}
-
-function transformToPuzzle(
-  response: typeof PuzzleResponseSchema._type,
-  puzzleNumber: number
-): Puzzle {
-  const songs: SongPuzzle[] = response.songs.map((song) => ({
-    id: generateId(),
-    decade: song.decade,
-    artist: song.artist,
-    title: song.title,
-    year: song.year,
-    snippets: song.snippets,
-    connectionHint: song.connectionHint,
-  }));
-
-  return {
-    id: `daily-${puzzleNumber}`,
-    theme: response.theme,
-    themeHint: response.themeHint,
-    songs,
-    difficulty: 'medium',
-    createdAt: new Date().toISOString(),
-    puzzleNumber,
-  };
-}
-
 async function generateDailyPuzzle(puzzleNumber: number): Promise<Puzzle> {
   const theme = getTodaysTheme(puzzleNumber);
-
-  const message = await getAnthropic().messages.create({
-    model: 'claude-sonnet-4.5',
-    max_tokens: 4096,
-    messages: [
-      {
-        role: 'user',
-        content: generatePuzzlePrompt(theme, 'medium'),
-      },
-    ],
-  });
-
-  const textContent = message.content.find((block) => block.type === 'text');
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text response from Claude');
-  }
-
-  let jsonText = textContent.text;
-  const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonText = jsonMatch[1].trim();
-  }
-
-  const parsed = JSON.parse(jsonText);
-  const validated = PuzzleResponseSchema.parse(parsed);
-
-  return transformToPuzzle(validated, puzzleNumber);
+  return assembleDailyPuzzle(getAnthropic(), getGenius(), theme, puzzleNumber);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -114,22 +72,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const puzzleNumber = getPuzzleNumber();
   const cacheKey = `daily-puzzle-${puzzleNumber}`;
 
-  // Helper to calculate time until next puzzle
+  // Helper to calculate time until next puzzle (uses local time)
   const getNextPuzzleTime = () => {
     const now = new Date();
     const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
     return tomorrow.getTime() - now.getTime();
   };
 
   try {
     const kv = await getKV();
     let puzzle: Puzzle | null = null;
+    let wasFromCache = false;
 
     // Try to get cached puzzle if KV is available
     if (kv) {
       puzzle = await kv.get<Puzzle>(cacheKey);
+      wasFromCache = puzzle !== null;
     }
 
     if (!puzzle) {
@@ -147,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       puzzle,
       puzzleNumber,
       nextPuzzleIn: getNextPuzzleTime(),
-      cached: kv !== null,
+      cached: wasFromCache,
     });
   } catch (error) {
     console.error('Error getting daily puzzle:', error);
