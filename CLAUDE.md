@@ -50,7 +50,7 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
   - `api/lib/schemas.ts` - Zod schemas for validation
 
 ### Key Libraries
-- **Puzzle generation**: `@anthropic-ai/sdk` calling `claude-sonnet-4-5-20250929`
+- **Puzzle generation**: `@anthropic-ai/sdk` calling `claude-sonnet-4-5`
 - **Daily puzzle caching**: `@vercel/kv`
 - **Validation**: `zod` for request/response schemas
 - **URL sharing**: `lz-string` for compressing puzzles into shareable URLs

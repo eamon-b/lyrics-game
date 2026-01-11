@@ -20,8 +20,8 @@ DIFFICULTY: ${difficulty.toUpperCase()} - ${difficultyGuide[difficulty]}
 Create a puzzle with exactly 7 songs - one from each decade (1960s through 2020s).
 Each song must clearly connect to the theme "${theme}".
 
-CRITICAL: Do NOT include actual lyrics. Instead, provide GUIDANCE for finding good lyric snippets.
-We will fetch the actual lyrics from a lyrics database using your guidance.
+We will try to fetch lyrics from a database, but include brief fallback snippets (2-4 lines) in case the API fails.
+This is for an educational music trivia game that uses short fair-use excerpts.
 
 FOR EACH SONG, PROVIDE:
 - decade, artist, title, year (exact official info)
@@ -37,7 +37,8 @@ For each difficulty level, describe WHERE to find a good snippet:
   "verseNumber": 1,  // Optional: which verse (1st, 2nd, etc.)
   "lineRange": { "start": 1, "end": 3 },  // Approximate lines within that section
   "keywords": ["word1", "word2", "word3", "word4"],  // 3-8 distinctive words that MUST appear in the snippet
-  "description": "Brief description of what this section is about"
+  "description": "Brief description of what this section is about",
+  "fallbackLyrics": "Actual lyrics text (2-4 lines separated by ' / ')"  // REQUIRED: Used if lyrics API fails
 }
 
 SNIPPET DIFFICULTY GUIDELINES:
@@ -69,7 +70,8 @@ Respond with valid JSON matching this structure:
           "verseNumber": 2,
           "lineRange": { "start": 1, "end": 3 },
           "keywords": ["silhouetto", "fandango", "thunderbolt", "lightning"],
-          "description": "The surreal operatic section with Scaramouche"
+          "description": "The surreal operatic section with Scaramouche",
+          "fallbackLyrics": "I see a little silhouetto of a man / Scaramouche, Scaramouche, will you do the Fandango? / Thunderbolt and lightning, very, very frightening me"
         },
         {
           "difficulty": "medium",
@@ -77,14 +79,16 @@ Respond with valid JSON matching this structure:
           "verseNumber": 1,
           "lineRange": { "start": 2, "end": 4 },
           "keywords": ["landslide", "escape", "reality"],
-          "description": "The caught in a landslide opening section"
+          "description": "The caught in a landslide opening section",
+          "fallbackLyrics": "Caught in a landslide, no escape from reality / Open your eyes, look up to the skies and see"
         },
         {
           "difficulty": "easy",
           "section": "intro",
           "lineRange": { "start": 1, "end": 2 },
           "keywords": ["real", "life", "fantasy", "caught"],
-          "description": "The iconic opening question"
+          "description": "The iconic opening question",
+          "fallbackLyrics": "Is this the real life? Is this just fantasy? / Caught in a landslide, no escape from reality"
         }
       ],
       "connectionHint": "A man facing the ultimate consequence",
@@ -122,6 +126,7 @@ Please suggest a well-known song from a major artist where the lyrics are defini
 Prefer mainstream hits from major labels.
 
 CRITICAL: You MUST provide EXACTLY 3 snippetGuidance items - one for each difficulty level (hard, medium, easy). No more, no less.
+Each snippetGuidance MUST include fallbackLyrics with actual lyrics (2-4 lines separated by ' / ').
 
 Respond with JSON in this exact format:
 {
@@ -136,21 +141,24 @@ Respond with JSON in this exact format:
       "verseNumber": 1,
       "lineRange": { "start": 1, "end": 3 },
       "keywords": ["word1", "word2", "word3", "word4"],
-      "description": "Description of this section"
+      "description": "Description of this section",
+      "fallbackLyrics": "First line of lyrics / Second line of lyrics / Third line"
     },
     {
       "difficulty": "medium",
       "section": "chorus",
       "lineRange": { "start": 1, "end": 2 },
       "keywords": ["word1", "word2", "word3"],
-      "description": "Description of this section"
+      "description": "Description of this section",
+      "fallbackLyrics": "First line of lyrics / Second line of lyrics"
     },
     {
       "difficulty": "easy",
       "section": "chorus",
       "lineRange": { "start": 3, "end": 4 },
       "keywords": ["word1", "word2", "word3", "word4"],
-      "description": "The most iconic part"
+      "description": "The most iconic part",
+      "fallbackLyrics": "Most famous line / Another famous line"
     }
   ],
   "connectionHint": "How this song connects to the theme",

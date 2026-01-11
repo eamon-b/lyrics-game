@@ -42,6 +42,8 @@ export const SnippetGuidanceSchema = z.object({
   lineRange: z.object({ start: z.number(), end: z.number() }),
   keywords: z.array(z.string()).min(3).max(8),
   description: z.string().max(200),
+  // Fallback lyrics to use if Genius API fails - 2-4 lines of actual lyrics
+  fallbackLyrics: z.string().max(400).optional(),
 });
 
 export const SongSelectionSchema = z.object({

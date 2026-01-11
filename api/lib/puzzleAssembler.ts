@@ -4,10 +4,15 @@ import { GeniusClient, parseLyricsIntoSections } from './genius.js';
 import { extractAllSnippets } from './snippetExtractor.js';
 import { generateSongSelectionPrompt, generateReplacementPrompt } from './prompts.js';
 import { SongSelectionResponseSchema, SongSelectionSchema, type SongSelection } from './schemas.js';
-import type { Puzzle, SongPuzzle, Difficulty, Decade } from './types.js';
+import type { Puzzle, SongPuzzle, Difficulty, Decade, LyricSnippet } from './types.js';
 
 const MAX_REPLACEMENT_ATTEMPTS = 2;
 const DECADES: Decade[] = ['1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
+
+// Models to try in order if one fails
+const MODELS_TO_TRY = ['claude-sonnet-4-5', 'claude-haiku-4-5'] as const;
+const MAX_RETRIES_PER_MODEL = 2;
+const RETRY_DELAY_MS = 1000;
 
 interface AssemblyContext {
   anthropic: Anthropic;
@@ -24,6 +29,73 @@ interface SongCandidate {
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+interface ClaudeRequestParams {
+  anthropic: Anthropic;
+  system: string;
+  userContent: string;
+  maxTokens: number;
+}
+
+/**
+ * Call Claude API with retry logic and model fallback.
+ * Tries multiple models if one fails or is blocked.
+ */
+async function callClaudeWithRetry(params: ClaudeRequestParams): Promise<string> {
+  const errors: string[] = [];
+
+  for (const model of MODELS_TO_TRY) {
+    for (let attempt = 1; attempt <= MAX_RETRIES_PER_MODEL; attempt++) {
+      try {
+        console.log(`[Claude] Trying ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL})`);
+
+        const message = await params.anthropic.messages.create({
+          model,
+          max_tokens: params.maxTokens,
+          system: params.system,
+          messages: [
+            { role: 'user', content: params.userContent },
+            { role: 'assistant', content: '{' },
+          ],
+        });
+
+        // Check if response was blocked or empty
+        const textContent = message.content.find((b) => b.type === 'text');
+        if (!textContent || textContent.type !== 'text') {
+          throw new Error('No text response from Claude');
+        }
+
+        // Check stop reason - if it stopped due to content filtering, try again
+        if (message.stop_reason === 'end_turn' || message.stop_reason === 'stop_sequence') {
+          console.log(`[Claude] Success with ${model}`);
+          return '{' + textContent.text;
+        }
+
+        // Unexpected stop reason
+        console.log(`[Claude] Unexpected stop_reason: ${message.stop_reason}`);
+        throw new Error(`Unexpected stop reason: ${message.stop_reason}`);
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Claude] ${model} attempt ${attempt} failed:`, errorMsg);
+        errors.push(`${model} attempt ${attempt}: ${errorMsg}`);
+
+        // Wait before retry (but not on last attempt of last model)
+        const isLastModel = model === MODELS_TO_TRY[MODELS_TO_TRY.length - 1];
+        const isLastAttempt = attempt === MAX_RETRIES_PER_MODEL;
+        if (!(isLastModel && isLastAttempt)) {
+          await delay(RETRY_DELAY_MS * attempt);
+        }
+      }
+    }
+  }
+
+  throw new Error(`All Claude API attempts failed:\n${errors.join('\n')}`);
 }
 
 export async function assemblePuzzle(
@@ -62,37 +134,37 @@ export async function assemblePuzzle(
 }
 
 async function getSongSelections(ctx: AssemblyContext): Promise<z.infer<typeof SongSelectionResponseSchema>> {
-  const message = await ctx.anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 4096,
-    system: 'You are a music expert. Respond with valid JSON only. No explanations, no markdown - just raw JSON starting with {',
-    messages: [
-      {
-        role: 'user',
-        content: generateSongSelectionPrompt(ctx.theme, ctx.difficulty),
-      },
-      {
-        role: 'assistant',
-        content: '{',
-      },
-    ],
+  const userPrompt = generateSongSelectionPrompt(ctx.theme, ctx.difficulty);
+
+  console.log('[Claude] getSongSelections - Request:');
+  console.log('[Claude] Theme:', ctx.theme);
+  console.log('[Claude] Difficulty:', ctx.difficulty);
+
+  const jsonText = await callClaudeWithRetry({
+    anthropic: ctx.anthropic,
+    system: 'You are a music expert creating content for an educational trivia game. Respond with valid JSON only. No explanations, no markdown - just raw JSON starting with {',
+    userContent: userPrompt,
+    maxTokens: 4096,
   });
 
-  const textContent = message.content.find((b) => b.type === 'text');
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text response from Claude');
-  }
-
-  const jsonText = '{' + textContent.text;
+  console.log('[Claude] getSongSelections - Raw response length:', jsonText.length);
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonText);
   } catch (e) {
+    console.error('[Claude] JSON parse error:', e);
+    console.error('[Claude] Failed to parse response text:', jsonText);
     throw new Error(`Failed to parse Claude's response as JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
-  return SongSelectionResponseSchema.parse(parsed);
+  console.log('[Claude] getSongSelections - Parsed songs:');
+  const response = SongSelectionResponseSchema.parse(parsed);
+  response.songs.forEach((song, i) => {
+    console.log(`[Claude]   ${i + 1}. ${song.artist} - ${song.title} (${song.year})`);
+  });
+
+  return response;
 }
 
 async function assembleSongWithRetries(
@@ -160,6 +232,37 @@ async function tryAssembleSong(
   selection: SongSelection,
   decade: Decade
 ): Promise<SongPuzzle | null> {
+  // Try Genius first
+  const geniusResult = await tryAssembleSongFromGenius(ctx, candidate, selection, decade);
+  if (geniusResult) {
+    return geniusResult;
+  }
+
+  // Genius failed - try fallback lyrics if available
+  const fallbackSnippets = extractSnippetsFromFallback(selection);
+  if (fallbackSnippets) {
+    console.log(`Using fallback lyrics for: ${candidate.artist} - ${candidate.title}`);
+    return {
+      id: generateId(),
+      decade,
+      artist: candidate.artist,
+      title: candidate.title,
+      year: candidate.year,
+      snippets: fallbackSnippets,
+      connectionHint: selection.connectionHint,
+    };
+  }
+
+  console.log(`No fallback lyrics available for: ${candidate.artist} - ${candidate.title}`);
+  return null;
+}
+
+async function tryAssembleSongFromGenius(
+  ctx: AssemblyContext,
+  candidate: SongCandidate,
+  selection: SongSelection,
+  decade: Decade
+): Promise<SongPuzzle | null> {
   // Search Genius for the song
   const searchResult = await ctx.genius.searchSong(candidate.artist, candidate.title);
 
@@ -208,42 +311,66 @@ async function tryAssembleSong(
   };
 }
 
+/**
+ * Extract snippets from fallback lyrics provided by Claude.
+ * Returns null if any of the 3 snippets are missing fallback lyrics.
+ */
+function extractSnippetsFromFallback(selection: SongSelection): LyricSnippet[] | null {
+  const snippets: LyricSnippet[] = [];
+
+  for (const guidance of selection.snippetGuidance) {
+    if (!guidance.fallbackLyrics) {
+      return null; // Missing fallback for this snippet
+    }
+
+    snippets.push({
+      text: guidance.fallbackLyrics,
+      difficulty: guidance.difficulty,
+    });
+  }
+
+  // Sort snippets by difficulty order: hard, medium, easy
+  const difficultyOrder = { hard: 0, medium: 1, easy: 2 };
+  snippets.sort((a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]);
+
+  return snippets.length === 3 ? snippets : null;
+}
+
 async function getReplacementSong(
   ctx: AssemblyContext,
   decade: Decade,
   failedSongs: string[]
 ): Promise<SongSelection> {
-  const message = await ctx.anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 1024,
-    system: 'You are a music expert. Respond with valid JSON only.',
-    messages: [
-      {
-        role: 'user',
-        content: generateReplacementPrompt(ctx.theme, decade, ctx.difficulty, failedSongs),
-      },
-      {
-        role: 'assistant',
-        content: '{',
-      },
-    ],
+  const userPrompt = generateReplacementPrompt(ctx.theme, decade, ctx.difficulty, failedSongs);
+
+  console.log('[Claude] getReplacementSong - Request:');
+  console.log('[Claude] Theme:', ctx.theme);
+  console.log('[Claude] Decade:', decade);
+  console.log('[Claude] Failed songs:', failedSongs.join(', '));
+
+  const jsonText = await callClaudeWithRetry({
+    anthropic: ctx.anthropic,
+    system: 'You are a music expert creating content for an educational trivia game. Respond with valid JSON only.',
+    userContent: userPrompt,
+    maxTokens: 1024,
   });
 
-  const textContent = message.content.find((b) => b.type === 'text');
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text response from Claude');
-  }
-
-  const jsonText = '{' + textContent.text;
+  console.log('[Claude] getReplacementSong - Raw response length:', jsonText.length);
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonText);
   } catch (e) {
+    console.error('[Claude] JSON parse error:', e);
+    console.error('[Claude] Failed to parse response text:', jsonText);
     throw new Error(`Failed to parse replacement song response as JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
-  return SongSelectionSchema.parse(parsed);
+  const replacement = SongSelectionSchema.parse(parsed);
+  console.log('[Claude] getReplacementSong - Parsed replacement:');
+  console.log(`[Claude]   ${replacement.artist} - ${replacement.title} (${replacement.year})`);
+
+  return replacement;
 }
 
 // Version for daily puzzles that includes puzzle number
