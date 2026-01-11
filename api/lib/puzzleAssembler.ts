@@ -4,7 +4,7 @@ import { GeniusClient, parseLyricsIntoSections } from './genius.js';
 import { extractAllSnippets } from './snippetExtractor.js';
 import { generateSongSelectionPrompt, generateReplacementPrompt } from './prompts.js';
 import { SongSelectionResponseSchema, SongSelectionSchema, type SongSelection } from './schemas.js';
-import type { Puzzle, SongPuzzle, Difficulty, Decade, LyricSnippet } from './types.js';
+import type { Puzzle, SongPuzzle, Difficulty, Decade } from './types.js';
 
 const MAX_REPLACEMENT_ATTEMPTS = 2;
 const DECADES: Decade[] = ['1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
@@ -232,29 +232,8 @@ async function tryAssembleSong(
   selection: SongSelection,
   decade: Decade
 ): Promise<SongPuzzle | null> {
-  // Try Genius first
-  const geniusResult = await tryAssembleSongFromGenius(ctx, candidate, selection, decade);
-  if (geniusResult) {
-    return geniusResult;
-  }
-
-  // Genius failed - try fallback lyrics if available
-  const fallbackSnippets = extractSnippetsFromFallback(selection);
-  if (fallbackSnippets) {
-    console.log(`Using fallback lyrics for: ${candidate.artist} - ${candidate.title}`);
-    return {
-      id: generateId(),
-      decade,
-      artist: candidate.artist,
-      title: candidate.title,
-      year: candidate.year,
-      snippets: fallbackSnippets,
-      connectionHint: selection.connectionHint,
-    };
-  }
-
-  console.log(`No fallback lyrics available for: ${candidate.artist} - ${candidate.title}`);
-  return null;
+  // Try to assemble song from Genius lyrics
+  return tryAssembleSongFromGenius(ctx, candidate, selection, decade);
 }
 
 async function tryAssembleSongFromGenius(
@@ -309,31 +288,6 @@ async function tryAssembleSongFromGenius(
     snippets: extractionResult.snippets,
     connectionHint: selection.connectionHint,
   };
-}
-
-/**
- * Extract snippets from fallback lyrics provided by Claude.
- * Returns null if any of the 3 snippets are missing fallback lyrics.
- */
-function extractSnippetsFromFallback(selection: SongSelection): LyricSnippet[] | null {
-  const snippets: LyricSnippet[] = [];
-
-  for (const guidance of selection.snippetGuidance) {
-    if (!guidance.fallbackLyrics) {
-      return null; // Missing fallback for this snippet
-    }
-
-    snippets.push({
-      text: guidance.fallbackLyrics,
-      difficulty: guidance.difficulty,
-    });
-  }
-
-  // Sort snippets by difficulty order: hard, medium, easy
-  const difficultyOrder = { hard: 0, medium: 1, easy: 2 };
-  snippets.sort((a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]);
-
-  return snippets.length === 3 ? snippets : null;
 }
 
 async function getReplacementSong(
