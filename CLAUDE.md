@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Lyrics Puzzle is a React-based word game where players guess songs from lyric snippets across 7 decades (1960s-2020s), then guess the connecting theme. Puzzles are generated via Claude AI. The app is deployed on Vercel.
+Lyrics Puzzle is a React-based word game where players guess songs from lyric snippets across 7 decades (1960s-2020s), then guess the connecting theme. Puzzles are generated via OpenAI GPT-4o-mini. The app is deployed on Vercel.
 
 ## Commands
 
@@ -38,19 +38,16 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
 - `api/generate.ts` - POST endpoint, creates custom puzzles
 - `api/daily.ts` - GET endpoint, returns daily puzzle (cached 24h in Vercel KV)
 - **Puzzle generation flow**:
-  1. Claude provides song selections with snippet guidance (section, keywords, line ranges)
-  2. Genius API fetches actual lyrics for each song
-  3. Snippets extracted based on Claude's guidance
-  4. If lyrics unavailable, retries with alternate songs
+  1. OpenAI GPT-4o-mini generates complete puzzles with lyrics included
+  2. Single API call returns all 7 songs with 3 snippets each (hard, medium, easy)
+  3. Lyrics are provided directly by the LLM (no external API needed)
 - Key modules:
-  - `api/lib/puzzleAssembler.ts` - Orchestrates the full puzzle generation flow
-  - `api/lib/genius.ts` - Genius API client for search and lyrics scraping
-  - `api/lib/snippetExtractor.ts` - Extracts snippets from lyrics using guidance
-  - `api/lib/prompts.ts` - Claude prompts for song selection
+  - `api/lib/puzzleAssembler.ts` - Orchestrates puzzle generation with OpenAI
+  - `api/lib/prompts.ts` - Prompts for LLM puzzle generation
   - `api/lib/schemas.ts` - Zod schemas for validation
 
 ### Key Libraries
-- **Puzzle generation**: `@anthropic-ai/sdk` calling `claude-sonnet-4-5`
+- **Puzzle generation**: `openai` SDK calling `gpt-4o-mini`
 - **Daily puzzle caching**: `@vercel/kv`
 - **Validation**: `zod` for request/response schemas
 - **URL sharing**: `lz-string` for compressing puzzles into shareable URLs
@@ -63,8 +60,7 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
 ## Environment Variables
 
 Required for API functions:
-- `ANTHROPIC_API_KEY` - Claude API key
-- `GENIUS_ACCESS_TOKEN` - Genius API access token for fetching lyrics
+- `OPENAI_API_KEY` - OpenAI API key
 - `KV_REST_API_URL` / `KV_REST_API_TOKEN` - Vercel KV (daily puzzle caching)
 
 ## Testing

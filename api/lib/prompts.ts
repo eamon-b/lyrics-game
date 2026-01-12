@@ -1,13 +1,8 @@
 import type { Difficulty } from './types.js';
 
-// Legacy function - kept for reference but no longer used
 export function generatePuzzlePrompt(theme: string, difficulty: Difficulty): string {
-  return generateSongSelectionPrompt(theme, difficulty);
-}
-
-export function generateSongSelectionPrompt(theme: string, difficulty: Difficulty): string {
   const difficultyGuide = {
-    easy: `Choose well-known hits with memorable, easily searchable lyrics`,
+    easy: `Choose well-known hits with memorable, recognizable lyrics`,
     medium: `Mix of popular hits and moderately known songs`,
     hard: `Include some deeper cuts, avoid the most obvious choices`,
   };
@@ -20,39 +15,23 @@ DIFFICULTY: ${difficulty.toUpperCase()} - ${difficultyGuide[difficulty]}
 Create a puzzle with exactly 7 songs - one from each decade (1960s through 2020s).
 Each song must clearly connect to the theme "${theme}".
 
-IMPORTANT: Do NOT provide any actual song lyrics. We will fetch lyrics from a lyrics database.
-Your job is only to select songs and describe WHERE to find good snippets within them.
-
 FOR EACH SONG, PROVIDE:
 - decade, artist, title, year (exact official info)
 - connectionHint: How this song connects to the theme
-- snippetGuidance: Array of 3 snippet guides (one each: hard, medium, easy)
-- alternates: 2 backup songs from the same decade in case lyrics can't be fetched
+- snippets: Array of 3 lyric snippets (one each: hard, medium, easy)
 
-SNIPPET GUIDANCE FORMAT:
-For each difficulty level, describe WHERE to find a good snippet:
-{
-  "difficulty": "hard" | "medium" | "easy",
-  "section": "verse" | "chorus" | "bridge" | "pre-chorus" | "intro" | "outro" | "other",
-  "verseNumber": 1,  // Optional: which verse (1st, 2nd, etc.)
-  "lineRange": { "start": 1, "end": 3 },  // Approximate lines within that section
-  "keywords": ["word1", "word2", "word3", "word4"],  // 3-8 distinctive words that MUST appear in the snippet
-  "description": "Brief description of what this section is about"
-}
-
-DO NOT include actual lyrics text. Only provide guidance for locating the right section.
+SNIPPET REQUIREMENTS:
+Each snippet should be 1-3 consecutive lines from the actual song lyrics.
 
 SNIPPET DIFFICULTY GUIDELINES:
-- HARD: Obscure verse, atmospheric line, should NOT contain song title
-- MEDIUM: Recognizable but not the most famous part
-- EASY: Iconic, well-known line (often from chorus)
+- HARD: Obscure verse, atmospheric line, should NOT contain song title. 1-2 lines.
+- MEDIUM: Recognizable but not the most famous part. 2-3 lines.
+- EASY: Iconic, well-known line (often from chorus). 2-3 lines.
 
-KEYWORD RULES:
-- Keywords must be distinctive words that actually appear in the lyrics of that section
-- Avoid common words like "the", "and", "you", "me", "is", "it"
-- Include at least one rare/distinctive word per snippet
-- Keywords help us verify we found the right section
-- Choose words that are unlikely to appear elsewhere in the song
+IMPORTANT COPYRIGHT NOTICE:
+You are providing short lyric excerpts (10-50 words) for educational purposes under fair use.
+Each snippet must be a direct, accurate quote from the song.
+Use " / " to separate lines within a snippet (e.g., "line one / line two / line three").
 
 Respond with valid JSON matching this structure:
 {
@@ -60,107 +39,27 @@ Respond with valid JSON matching this structure:
   "themeHint": "A clever hint about the theme",
   "songs": [
     {
-      "decade": "1970s",
-      "artist": "Queen",
-      "title": "Bohemian Rhapsody",
-      "year": 1975,
-      "snippetGuidance": [
+      "decade": "1960s",
+      "artist": "The Beatles",
+      "title": "Yesterday",
+      "year": 1965,
+      "snippets": [
         {
-          "difficulty": "hard",
-          "section": "verse",
-          "verseNumber": 2,
-          "lineRange": { "start": 1, "end": 3 },
-          "keywords": ["silhouetto", "fandango", "thunderbolt", "lightning"],
-          "description": "The surreal operatic section with Scaramouche"
+          "text": "Suddenly / I'm not half the man I used to be",
+          "difficulty": "hard"
         },
         {
-          "difficulty": "medium",
-          "section": "verse",
-          "verseNumber": 1,
-          "lineRange": { "start": 2, "end": 4 },
-          "keywords": ["landslide", "escape", "reality"],
-          "description": "The caught in a landslide opening section"
+          "text": "Why she had to go / I don't know, she wouldn't say",
+          "difficulty": "medium"
         },
         {
-          "difficulty": "easy",
-          "section": "intro",
-          "lineRange": { "start": 1, "end": 2 },
-          "keywords": ["real", "life", "fantasy", "caught"],
-          "description": "The iconic opening question"
+          "text": "Yesterday / All my troubles seemed so far away",
+          "difficulty": "easy"
         }
       ],
-      "connectionHint": "A man facing the ultimate consequence",
-      "alternates": [
-        { "artist": "A-ha", "title": "Take On Me", "year": 1985 },
-        { "artist": "Tears for Fears", "title": "Everybody Wants to Rule the World", "year": 1985 }
-      ]
+      "connectionHint": "A song about longing for the past"
     }
-    // ... 6 more songs for other decades
-  ]
-}`;
-}
-
-export function generateReplacementPrompt(
-  theme: string,
-  decade: string,
-  difficulty: Difficulty,
-  failedSongs: string[]
-): string {
-  const failedList = failedSongs.map(s => `- ${s}`).join('\n');
-
-  const difficultyNote = difficulty === 'hard'
-    ? 'Can be a deeper cut, not necessarily a huge hit.'
-    : difficulty === 'easy'
-      ? 'Should be a well-known hit that most people recognize.'
-      : 'Can be a mix of popular and moderately known.';
-
-  return `I need a DIFFERENT song from the ${decade} that connects to the theme "${theme}".
-Difficulty: ${difficulty.toUpperCase()} - ${difficultyNote}
-
-The following songs didn't work (lyrics couldn't be fetched):
-${failedList}
-
-Please suggest a well-known song from a major artist where the lyrics are definitely available.
-Prefer mainstream hits from major labels.
-
-IMPORTANT: Do NOT provide any actual song lyrics. We will fetch lyrics from a lyrics database.
-Your job is only to select songs and describe WHERE to find good snippets within them.
-
-CRITICAL: You MUST provide EXACTLY 3 snippetGuidance items - one for each difficulty level (hard, medium, easy). No more, no less.
-
-Respond with JSON in this exact format:
-{
-  "decade": "${decade}",
-  "artist": "Artist Name",
-  "title": "Song Title",
-  "year": YYYY,
-  "snippetGuidance": [
-    {
-      "difficulty": "hard",
-      "section": "verse",
-      "verseNumber": 1,
-      "lineRange": { "start": 1, "end": 3 },
-      "keywords": ["word1", "word2", "word3", "word4"],
-      "description": "Description of this section"
-    },
-    {
-      "difficulty": "medium",
-      "section": "chorus",
-      "lineRange": { "start": 1, "end": 2 },
-      "keywords": ["word1", "word2", "word3"],
-      "description": "Description of this section"
-    },
-    {
-      "difficulty": "easy",
-      "section": "chorus",
-      "lineRange": { "start": 3, "end": 4 },
-      "keywords": ["word1", "word2", "word3", "word4"],
-      "description": "The most iconic part"
-    }
-  ],
-  "connectionHint": "How this song connects to the theme",
-  "alternates": [
-    { "artist": "...", "title": "...", "year": YYYY }
+    // ... 6 more songs for other decades (1970s, 1980s, 1990s, 2000s, 2010s, 2020s)
   ]
 }`;
 }
