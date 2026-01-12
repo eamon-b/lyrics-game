@@ -13,13 +13,16 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'happy-dom',
-    setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{js,ts,tsx}', 'api/**/*.{test,spec}.{js,ts}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'src/test/'],
     },
+    // Use happy-dom for src tests, node for api tests
+    environmentMatchGlobs: [
+      ['src/**', 'happy-dom'],
+      ['api/**', 'node'],
+    ],
   },
 })
