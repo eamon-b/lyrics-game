@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { GenerateRequestSchema } from './lib/schemas.js';
-import { GeniusClient } from './lib/genius.js';
 import { assemblePuzzle } from './lib/puzzleAssembler.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -22,29 +21,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { theme, difficulty } = parseResult.data;
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-
-    const geniusToken = process.env.GENIUS_ACCESS_TOKEN;
-    console.log('GENIUS_ACCESS_TOKEN present:', !!geniusToken, 'length:', geniusToken?.length);
-    if (!geniusToken) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
       return res.status(500).json({
         error: 'Configuration error',
-        message: 'Genius API token not configured',
+        message: 'OpenAI API key not configured',
       });
     }
 
-    const genius = new GeniusClient(geniusToken);
+    const openai = new OpenAI({
+      apiKey,
+    });
 
-    const puzzle = await assemblePuzzle(anthropic, genius, theme, difficulty);
+    const puzzle = await assemblePuzzle(openai, theme, difficulty);
 
     return res.status(200).json(puzzle);
   } catch (error) {
     console.error('Error generating puzzle:', error);
 
-    // Handle Anthropic API errors
-    if (error instanceof Anthropic.APIError) {
+    // Handle OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
       return res.status(error.status || 500).json({
         error: 'API error',
         message: error.message,

@@ -10,7 +10,7 @@ interface ThemeInputProps {
 const SUGGESTED_THEMES = [
   'songs from Shrek movies',
   'songs for your git commit messages',
-  'songs banned from radio at some point',
+  'songs that mention specific foods',
 ];
 
 export function ThemeInput({ onSubmit, onDailyClick, isLoading }: ThemeInputProps) {
