@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { GenerateRequestSchema } from './lib/schemas.js';
-import { GeniusClient } from './lib/genius.js';
 import { assemblePuzzle } from './lib/puzzleAssembler.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -26,18 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    const geniusToken = process.env.GENIUS_ACCESS_TOKEN;
-    console.log('GENIUS_ACCESS_TOKEN present:', !!geniusToken, 'length:', geniusToken?.length);
-    if (!geniusToken) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Genius API token not configured',
-      });
-    }
-
-    const genius = new GeniusClient(geniusToken);
-
-    const puzzle = await assemblePuzzle(anthropic, genius, theme, difficulty);
+    const puzzle = await assemblePuzzle(anthropic, theme, difficulty);
 
     return res.status(200).json(puzzle);
   } catch (error) {

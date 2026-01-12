@@ -2,7 +2,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { VercelKV } from '@vercel/kv';
 import Anthropic from '@anthropic-ai/sdk';
 import { DAILY_THEMES } from './lib/prompts.js';
-import { GeniusClient } from './lib/genius.js';
 import { assembleDailyPuzzle } from './lib/puzzleAssembler.js';
 import type { Puzzle } from './lib/types.js';
 
@@ -32,18 +31,6 @@ function getAnthropic(): Anthropic {
   return _anthropic;
 }
 
-let _genius: GeniusClient | null = null;
-function getGenius(): GeniusClient {
-  if (!_genius) {
-    const token = process.env.GENIUS_ACCESS_TOKEN;
-    if (!token) {
-      throw new Error('GENIUS_ACCESS_TOKEN not configured');
-    }
-    _genius = new GeniusClient(token);
-  }
-  return _genius;
-}
-
 // Get a deterministic puzzle number based on date
 function getPuzzleNumber(): number {
   const startDate = new Date('2024-01-01');
@@ -61,7 +48,7 @@ function getTodaysTheme(puzzleNumber: number): string {
 
 async function generateDailyPuzzle(puzzleNumber: number): Promise<Puzzle> {
   const theme = getTodaysTheme(puzzleNumber);
-  return assembleDailyPuzzle(getAnthropic(), getGenius(), theme, puzzleNumber);
+  return assembleDailyPuzzle(getAnthropic(), theme, puzzleNumber);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
