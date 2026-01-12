@@ -22,6 +22,7 @@ FOR EACH SONG, PROVIDE:
 
 SNIPPET REQUIREMENTS:
 Each snippet should be 1-3 consecutive lines from the actual song lyrics.
+IMPORTANT: Avoid explicit, NSFW, or profane lyrics. Choose clean snippets suitable for all ages.
 
 SNIPPET DIFFICULTY GUIDELINES:
 - HARD: Obscure verse, atmospheric line, should NOT contain song title. 1-2 lines.
