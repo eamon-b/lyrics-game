@@ -29,7 +29,7 @@ async function callOpenAIWithRetry(
       console.log(`[OpenAI] Attempt ${attempt}/${maxRetries}`);
 
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         messages: [
           {
             role: 'system',
@@ -40,7 +40,6 @@ async function callOpenAIWithRetry(
             content: prompt,
           },
         ],
-        temperature: 0.7,
         response_format: { type: 'json_object' },
       });
 

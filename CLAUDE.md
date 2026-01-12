@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Lyrics Puzzle is a React-based word game where players guess songs from lyric snippets across 7 decades (1960s-2020s), then guess the connecting theme. Puzzles are generated via OpenAI GPT-4o-mini. The app is deployed on Vercel.
+Lyrics Puzzle is a React-based word game where players guess songs from lyric snippets across 7 decades (1960s-2020s), then guess the connecting theme. Puzzles are generated via OpenAI GPT-5-mini. The app is deployed on Vercel.
 
 ## Commands
 
@@ -38,7 +38,7 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
 - `api/generate.ts` - POST endpoint, creates custom puzzles
 - `api/daily.ts` - GET endpoint, returns daily puzzle (cached 24h in Vercel KV)
 - **Puzzle generation flow**:
-  1. OpenAI GPT-4o-mini generates complete puzzles with lyrics included
+  1. OpenAI GPT-5-mini generates complete puzzles with lyrics included
   2. Single API call returns all 7 songs with 3 snippets each (hard, medium, easy)
   3. Lyrics are provided directly by the LLM (no external API needed)
 - Key modules:
@@ -47,7 +47,7 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
   - `api/lib/schemas.ts` - Zod schemas for validation
 
 ### Key Libraries
-- **Puzzle generation**: `openai` SDK calling `gpt-4o-mini`
+- **Puzzle generation**: `openai` SDK calling `gpt-5-mini`
 - **Daily puzzle caching**: `@vercel/kv`
 - **Validation**: `zod` for request/response schemas
 - **URL sharing**: `lz-string` for compressing puzzles into shareable URLs
