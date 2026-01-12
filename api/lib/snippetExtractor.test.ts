@@ -3,9 +3,9 @@ import {
   extractSnippet,
   extractAllSnippets,
   validateSnippetExtraction,
-} from './snippetExtractor'
-import type { LyricSection } from './types'
-import type { SnippetGuidance } from './schemas'
+} from './snippetExtractor.js'
+import type { LyricSection } from './types.js'
+import type { SnippetGuidance } from './schemas.js'
 
 describe('extractSnippet', () => {
   const sampleSections: LyricSection[] = [

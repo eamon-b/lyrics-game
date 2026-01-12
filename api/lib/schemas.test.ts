@@ -7,7 +7,7 @@ import {
   SnippetGuidanceSchema,
   SongSelectionSchema,
   SongSelectionResponseSchema
-} from './schemas'
+} from './schemas.js'
 
 describe('LyricSnippetSchema', () => {
   it('accepts valid snippets', () => {
