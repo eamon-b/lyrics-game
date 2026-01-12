@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { VercelKV } from '@vercel/kv';
 import Anthropic from '@anthropic-ai/sdk';
-import { DAILY_THEMES } from './lib/prompts.js';
-import { assembleDailyPuzzle } from './lib/puzzleAssembler.js';
-import type { Puzzle } from './lib/types.js';
+import { DAILY_THEMES } from '../lib/api/prompts.js';
+import { assembleDailyPuzzle } from '../lib/api/puzzleAssembler.js';
+import type { Puzzle } from '../lib/api/types.js';
 
 // Lazy initialization to ensure env vars are loaded at request time
 let _kv: VercelKV | null = null;

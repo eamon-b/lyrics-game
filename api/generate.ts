@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
-import { GenerateRequestSchema } from './lib/schemas.js';
-import { assemblePuzzle } from './lib/puzzleAssembler.js';
+import { GenerateRequestSchema } from '../lib/api/schemas.js';
+import { assemblePuzzle } from '../lib/api/puzzleAssembler.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST
