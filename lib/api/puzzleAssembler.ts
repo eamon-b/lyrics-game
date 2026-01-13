@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { LrclibClient } from './lrclib.js';
 import { parseLyricsIntoSections } from './lyricsParser.js';
-import { extractAllSnippets } from './snippetExtractor.js';
+import { extractAllSnippets, extractFallbackSnippets } from './snippetExtractor.js';
 import { generateSongSelectionPrompt, generateReplacementPrompt } from './prompts.js';
 import { SongSelectionResponseSchema, SongSelectionSchema, type SongSelection } from './schemas.js';
 import type { Puzzle, SongPuzzle, Difficulty, Decade } from './types.js';
@@ -249,8 +249,27 @@ async function tryAssembleSong(
     return null;
   }
 
-  // Extract snippets using guidance
-  const extractionResult = extractAllSnippets(sections, selection.snippetGuidance);
+  // Check if this is the primary song (has matching guidance) or an alternate
+  const isPrimarySong =
+    candidate.artist.toLowerCase() === selection.artist.toLowerCase() &&
+    candidate.title.toLowerCase() === selection.title.toLowerCase();
+
+  // Extract snippets - use keyword guidance for primary song, fallback for alternates
+  let extractionResult;
+  if (isPrimarySong) {
+    extractionResult = extractAllSnippets(sections, selection.snippetGuidance);
+    if (!extractionResult.success) {
+      // Primary song guidance failed - try fallback extraction
+      console.log(
+        `Keyword extraction failed for primary song: ${candidate.artist} - ${candidate.title}, trying fallback`
+      );
+      extractionResult = extractFallbackSnippets(sections);
+    }
+  } else {
+    // Alternate song - use fallback extraction (no song-specific keywords)
+    console.log(`Using fallback extraction for alternate: ${candidate.artist} - ${candidate.title}`);
+    extractionResult = extractFallbackSnippets(sections);
+  }
 
   if (!extractionResult.success) {
     console.log(

@@ -242,3 +242,127 @@ export function extractAllSnippets(
     errors,
   };
 }
+
+/**
+ * Extract snippets without keyword guidance.
+ * Used as a fallback when we don't have song-specific snippet guidance
+ * (e.g., for alternate songs or when keyword matching fails).
+ *
+ * Strategy:
+ * - Easy: Pick from chorus (most recognizable)
+ * - Medium: Pick from verse
+ * - Hard: Pick from bridge, pre-chorus, or other sections
+ */
+export function extractFallbackSnippets(
+  sections: LyricSection[]
+): { success: boolean; snippets: LyricSnippet[]; errors: string[] } {
+  if (sections.length === 0) {
+    return { success: false, snippets: [], errors: ['No sections available'] };
+  }
+
+  const snippets: LyricSnippet[] = [];
+  // Track how many times each section has been used (for offset calculation)
+  const sectionUseCounts = new Map<number, number>();
+
+  // Helper to get lines from a section
+  const getSnippetFromSection = (section: LyricSection, startLine = 0): string => {
+    const lines = section.lines.slice(startLine, startLine + DEFAULT_WINDOW_SIZE);
+    return lines.join(' / ');
+  };
+
+  // Helper to mark a section as used and get the next available offset
+  const useSection = (index: number): number => {
+    const currentCount = sectionUseCounts.get(index) || 0;
+    sectionUseCounts.set(index, currentCount + 1);
+    return currentCount * DEFAULT_WINDOW_SIZE;
+  };
+
+  // Helper to check if a section has more lines available
+  const hasAvailableLines = (section: LyricSection, index: number): boolean => {
+    const usedCount = sectionUseCounts.get(index) || 0;
+    const nextOffset = usedCount * DEFAULT_WINDOW_SIZE;
+    return nextOffset < section.lines.length && section.lines.length >= 2;
+  };
+
+  // Helper to find best section of a given type (preferring unused sections)
+  const findSection = (types: string[]): { section: LyricSection; index: number } | null => {
+    // First try to find an unused section
+    for (const type of types) {
+      const index = sections.findIndex(
+        (s, i) => s.type === type && !sectionUseCounts.has(i) && s.lines.length >= 2
+      );
+      if (index !== -1) {
+        return { section: sections[index], index };
+      }
+    }
+    // Then try to find a section with remaining lines
+    for (const type of types) {
+      const index = sections.findIndex((s, i) => s.type === type && hasAvailableLines(s, i));
+      if (index !== -1) {
+        return { section: sections[index], index };
+      }
+    }
+    return null;
+  };
+
+  // Easy: Try chorus first (most recognizable)
+  const easyMatch = findSection(['chorus', 'verse', 'other']);
+  if (easyMatch) {
+    const offset = useSection(easyMatch.index);
+    snippets.push({
+      text: getSnippetFromSection(easyMatch.section, offset),
+      difficulty: 'easy',
+    });
+  }
+
+  // Medium: Try verse
+  const mediumMatch = findSection(['verse', 'chorus', 'other']);
+  if (mediumMatch) {
+    const offset = useSection(mediumMatch.index);
+    snippets.push({
+      text: getSnippetFromSection(mediumMatch.section, offset),
+      difficulty: 'medium',
+    });
+  }
+
+  // Hard: Try bridge, pre-chorus, or anything else
+  const hardMatch = findSection(['bridge', 'pre-chorus', 'intro', 'outro', 'verse', 'other']);
+  if (hardMatch) {
+    const offset = useSection(hardMatch.index);
+    snippets.push({
+      text: getSnippetFromSection(hardMatch.section, offset),
+      difficulty: 'hard',
+    });
+  }
+
+  // If we don't have 3 snippets, try to fill in from any section with remaining lines
+  if (snippets.length < 3) {
+    const difficulties: Array<'easy' | 'medium' | 'hard'> = ['easy', 'medium', 'hard'];
+    const missingDifficulties = difficulties.filter((d) => !snippets.find((s) => s.difficulty === d));
+
+    for (const difficulty of missingDifficulties) {
+      // Try any section with available lines
+      for (let i = 0; i < sections.length && snippets.length < 3; i++) {
+        const section = sections[i];
+        if (hasAvailableLines(section, i)) {
+          const offset = useSection(i);
+          snippets.push({
+            text: getSnippetFromSection(section, offset),
+            difficulty,
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  // Sort by difficulty order
+  const difficultyOrder = { hard: 0, medium: 1, easy: 2 };
+  snippets.sort((a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]);
+
+  return {
+    success: snippets.length === 3,
+    snippets,
+    errors: snippets.length < 3 ? ['Could not extract 3 distinct snippets from lyrics'] : [],
+  };
+}

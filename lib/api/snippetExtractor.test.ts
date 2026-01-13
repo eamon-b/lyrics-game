@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   extractSnippet,
   extractAllSnippets,
+  extractFallbackSnippets,
   validateSnippetExtraction,
 } from './snippetExtractor.js'
 import type { LyricSection } from './types.js'
@@ -277,5 +278,158 @@ describe('validateSnippetExtraction', () => {
     expect(result.valid).toBe(false)
     expect(result.missing).toHaveLength(1)
     expect(result.missing[0].difficulty).toBe('hard')
+  })
+})
+
+describe('extractFallbackSnippets', () => {
+  it('extracts 3 snippets from sections without keyword guidance', () => {
+    const sections: LyricSection[] = [
+      {
+        type: 'verse',
+        number: 1,
+        lines: ['Verse line one', 'Verse line two', 'Verse line three'],
+      },
+      {
+        type: 'chorus',
+        number: 1,
+        lines: ['Chorus line one', 'Chorus line two', 'Chorus line three'],
+      },
+      {
+        type: 'bridge',
+        number: 1,
+        lines: ['Bridge line one', 'Bridge line two', 'Bridge line three'],
+      },
+    ]
+
+    const result = extractFallbackSnippets(sections)
+    expect(result.success).toBe(true)
+    expect(result.snippets).toHaveLength(3)
+    expect(result.errors).toHaveLength(0)
+
+    // Check all difficulties are present
+    const difficulties = result.snippets.map((s) => s.difficulty)
+    expect(difficulties).toContain('easy')
+    expect(difficulties).toContain('medium')
+    expect(difficulties).toContain('hard')
+  })
+
+  it('sorts snippets by difficulty (hard, medium, easy)', () => {
+    const sections: LyricSection[] = [
+      {
+        type: 'verse',
+        number: 1,
+        lines: ['Verse line one', 'Verse line two', 'Verse line three'],
+      },
+      {
+        type: 'chorus',
+        number: 1,
+        lines: ['Chorus line one', 'Chorus line two', 'Chorus line three'],
+      },
+      {
+        type: 'bridge',
+        number: 1,
+        lines: ['Bridge line one', 'Bridge line two'],
+      },
+    ]
+
+    const result = extractFallbackSnippets(sections)
+    expect(result.success).toBe(true)
+    expect(result.snippets[0].difficulty).toBe('hard')
+    expect(result.snippets[1].difficulty).toBe('medium')
+    expect(result.snippets[2].difficulty).toBe('easy')
+  })
+
+  it('prefers chorus for easy, verse for medium, bridge for hard', () => {
+    const sections: LyricSection[] = [
+      {
+        type: 'chorus',
+        number: 1,
+        lines: ['Catchy chorus here', 'Everyone knows this', 'Sing along now'],
+      },
+      {
+        type: 'verse',
+        number: 1,
+        lines: ['Verse content here', 'More verse lyrics', 'Keep reading'],
+      },
+      {
+        type: 'bridge',
+        number: 1,
+        lines: ['Bridge is obscure', 'Nobody knows this part'],
+      },
+    ]
+
+    const result = extractFallbackSnippets(sections)
+    expect(result.success).toBe(true)
+
+    // Easy should be from chorus
+    const easySnippet = result.snippets.find((s) => s.difficulty === 'easy')
+    expect(easySnippet?.text).toContain('Catchy chorus')
+
+    // Hard should be from bridge
+    const hardSnippet = result.snippets.find((s) => s.difficulty === 'hard')
+    expect(hardSnippet?.text).toContain('Bridge is obscure')
+  })
+
+  it('handles songs with only verses', () => {
+    const sections: LyricSection[] = [
+      {
+        type: 'verse',
+        number: 1,
+        lines: ['First verse line one', 'First verse line two', 'First verse line three', 'First verse line four'],
+      },
+      {
+        type: 'verse',
+        number: 2,
+        lines: ['Second verse line one', 'Second verse line two', 'Second verse line three'],
+      },
+      {
+        type: 'verse',
+        number: 3,
+        lines: ['Third verse line one', 'Third verse line two', 'Third verse line three'],
+      },
+    ]
+
+    const result = extractFallbackSnippets(sections)
+    expect(result.success).toBe(true)
+    expect(result.snippets).toHaveLength(3)
+  })
+
+  it('returns failure for empty sections', () => {
+    const result = extractFallbackSnippets([])
+    expect(result.success).toBe(false)
+    expect(result.errors.length).toBeGreaterThan(0)
+  })
+
+  it('handles sections with few lines by reusing sections', () => {
+    const sections: LyricSection[] = [
+      {
+        type: 'verse',
+        number: 1,
+        lines: ['Short verse line one', 'Short verse line two', 'Short verse line three', 'Short verse line four', 'Short verse line five'],
+      },
+      {
+        type: 'chorus',
+        number: 1,
+        lines: ['Short chorus line one', 'Short chorus line two', 'Short chorus line three'],
+      },
+    ]
+
+    const result = extractFallbackSnippets(sections)
+    expect(result.success).toBe(true)
+    expect(result.snippets).toHaveLength(3)
+  })
+
+  it('fails when there are not enough lines for 3 snippets', () => {
+    const sections: LyricSection[] = [
+      {
+        type: 'verse',
+        number: 1,
+        lines: ['Only two lines', 'In the whole song'],
+      },
+    ]
+
+    const result = extractFallbackSnippets(sections)
+    // With only 2 lines, we can only get 1 snippet
+    expect(result.success).toBe(false)
   })
 })
