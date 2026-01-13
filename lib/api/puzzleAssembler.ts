@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { GeniusClient, parseLyricsIntoSections } from './genius.js';
-import { extractAllSnippets } from './snippetExtractor.js';
+import { LrclibClient } from './lrclib.js';
+import { parseLyricsIntoSections } from './lyricsParser.js';
+import { extractAllSnippets, extractFallbackSnippets } from './snippetExtractor.js';
 import { generateSongSelectionPrompt, generateReplacementPrompt } from './prompts.js';
 import { SongSelectionResponseSchema, SongSelectionSchema, type SongSelection } from './schemas.js';
 import type { Puzzle, SongPuzzle, Difficulty, Decade } from './types.js';
@@ -16,7 +17,7 @@ const RETRY_DELAY_MS = 1000;
 
 interface AssemblyContext {
   anthropic: Anthropic;
-  genius: GeniusClient;
+  lrclib: LrclibClient;
   theme: string;
   difficulty: Difficulty;
 }
@@ -100,11 +101,11 @@ async function callClaudeWithRetry(params: ClaudeRequestParams): Promise<string>
 
 export async function assemblePuzzle(
   anthropic: Anthropic,
-  genius: GeniusClient,
   theme: string,
   difficulty: Difficulty
 ): Promise<Puzzle> {
-  const ctx: AssemblyContext = { anthropic, genius, theme, difficulty };
+  const lrclib = new LrclibClient();
+  const ctx: AssemblyContext = { anthropic, lrclib, theme, difficulty };
 
   // Step 1: Get song selections from Claude
   console.log(`Getting song selections for theme: "${theme}"`);
@@ -232,30 +233,11 @@ async function tryAssembleSong(
   selection: SongSelection,
   decade: Decade
 ): Promise<SongPuzzle | null> {
-  // Try to assemble song from Genius lyrics
-  return tryAssembleSongFromGenius(ctx, candidate, selection, decade);
-}
+  // Fetch lyrics from LRCLIB
+  const lyrics = await ctx.lrclib.getLyrics(candidate.artist, candidate.title);
 
-async function tryAssembleSongFromGenius(
-  ctx: AssemblyContext,
-  candidate: SongCandidate,
-  selection: SongSelection,
-  decade: Decade
-): Promise<SongPuzzle | null> {
-  // Search Genius for the song
-  const searchResult = await ctx.genius.searchSong(candidate.artist, candidate.title);
-
-  if (!searchResult) {
-    console.log(`Genius search failed for: ${candidate.artist} - ${candidate.title}`);
-    return null;
-  }
-
-  // Scrape lyrics from Genius
-  let lyrics: string;
-  try {
-    lyrics = await ctx.genius.scrapeLyrics(searchResult.url);
-  } catch (error) {
-    console.log(`Lyrics scraping failed for: ${candidate.artist} - ${candidate.title}`, error);
+  if (!lyrics) {
+    console.log(`LRCLIB lyrics not found for: ${candidate.artist} - ${candidate.title}`);
     return null;
   }
 
@@ -267,8 +249,27 @@ async function tryAssembleSongFromGenius(
     return null;
   }
 
-  // Extract snippets using guidance
-  const extractionResult = extractAllSnippets(sections, selection.snippetGuidance);
+  // Check if this is the primary song (has matching guidance) or an alternate
+  const isPrimarySong =
+    candidate.artist.toLowerCase() === selection.artist.toLowerCase() &&
+    candidate.title.toLowerCase() === selection.title.toLowerCase();
+
+  // Extract snippets - use keyword guidance for primary song, fallback for alternates
+  let extractionResult;
+  if (isPrimarySong) {
+    extractionResult = extractAllSnippets(sections, selection.snippetGuidance);
+    if (!extractionResult.success) {
+      // Primary song guidance failed - try fallback extraction
+      console.log(
+        `Keyword extraction failed for primary song: ${candidate.artist} - ${candidate.title}, trying fallback`
+      );
+      extractionResult = extractFallbackSnippets(sections);
+    }
+  } else {
+    // Alternate song - use fallback extraction (no song-specific keywords)
+    console.log(`Using fallback extraction for alternate: ${candidate.artist} - ${candidate.title}`);
+    extractionResult = extractFallbackSnippets(sections);
+  }
 
   if (!extractionResult.success) {
     console.log(
@@ -330,11 +331,10 @@ async function getReplacementSong(
 // Version for daily puzzles that includes puzzle number
 export async function assembleDailyPuzzle(
   anthropic: Anthropic,
-  genius: GeniusClient,
   theme: string,
   puzzleNumber: number
 ): Promise<Puzzle> {
-  const puzzle = await assemblePuzzle(anthropic, genius, theme, 'medium');
+  const puzzle = await assemblePuzzle(anthropic, theme, 'medium');
 
   return {
     ...puzzle,

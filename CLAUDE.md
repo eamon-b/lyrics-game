@@ -39,12 +39,13 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
 - `api/daily.ts` - GET endpoint, returns daily puzzle (cached 24h in Vercel KV)
 - **Puzzle generation flow**:
   1. Claude provides song selections with snippet guidance (section, keywords, line ranges)
-  2. Genius API fetches actual lyrics for each song
+  2. LRCLIB API fetches lyrics for each song (free, no auth required)
   3. Snippets extracted based on Claude's guidance
   4. If lyrics unavailable, retries with alternate songs
 - Key modules:
   - `api/lib/puzzleAssembler.ts` - Orchestrates the full puzzle generation flow
-  - `api/lib/genius.ts` - Genius API client for search and lyrics scraping
+  - `api/lib/lrclib.ts` - LRCLIB API client for lyrics fetching
+  - `api/lib/lyricsParser.ts` - Parses lyrics text into sections
   - `api/lib/snippetExtractor.ts` - Extracts snippets from lyrics using guidance
   - `api/lib/prompts.ts` - Claude prompts for song selection
   - `api/lib/schemas.ts` - Zod schemas for validation
@@ -64,8 +65,9 @@ For local API testing, use `npm run dev:api` which runs both frontend and server
 
 Required for API functions:
 - `ANTHROPIC_API_KEY` - Claude API key
-- `GENIUS_ACCESS_TOKEN` - Genius API access token for fetching lyrics
 - `KV_REST_API_URL` / `KV_REST_API_TOKEN` - Vercel KV (daily puzzle caching)
+
+Note: LRCLIB API is free and requires no authentication.
 
 ## Testing
 
@@ -76,6 +78,9 @@ Tests use **Vitest** with `happy-dom` environment. Test files are colocated with
 - `src/lib/matching.test.ts` - Fuzzy matching logic for artist/title guesses
 - `src/lib/scoring.test.ts` - Score calculation and result formatting
 - `api/lib/schemas.test.ts` - Zod schema validation
+- `api/lib/lrclib.test.ts` - LRCLIB client for lyrics fetching
+- `api/lib/lyricsParser.test.ts` - Lyrics section parsing
+- `api/lib/snippetExtractor.test.ts` - Snippet extraction from lyrics
 
 ### VSCode Debugging
 

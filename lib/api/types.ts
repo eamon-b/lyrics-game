@@ -30,14 +30,6 @@ export interface Puzzle {
 // SnippetGuidance, SongSelection, and SongSelectionResponse are defined in schemas.ts
 // Import them from there to avoid duplication
 
-// Genius API types
-export interface GeniusSearchResult {
-  id: number;
-  title: string;
-  artist_names: string;
-  url: string;
-}
-
 export interface LyricSection {
   type: 'verse' | 'chorus' | 'bridge' | 'pre-chorus' | 'intro' | 'outro' | 'other';
   number?: number;
